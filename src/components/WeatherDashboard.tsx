@@ -1,13 +1,21 @@
 import { useState } from 'react'
+import { useRecentSearches } from '../hooks/useRecentSearches'
 import { useWeather } from '../hooks/useWeather'
 import type { TemperatureUnit } from '../types/weather'
 import { CurrentWeather } from './CurrentWeather'
 import { ForecastList } from './ForecastList'
+import { RecentSearches } from './RecentSearches'
 import { WeatherSearch } from './WeatherSearch'
 
 export function WeatherDashboard() {
   const { weather, isLoading, error, search } = useWeather()
+  const { recent, addRecent, clearRecent } = useRecentSearches()
   const [unit, setUnit] = useState<TemperatureUnit>('celsius')
+
+  function handleSearch(city: string) {
+    void search(city)
+    addRecent(city)
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-8 text-white sm:px-6 sm:py-12">
@@ -38,8 +46,10 @@ export function WeatherDashboard() {
               Clear, local forecasts for wherever you’re headed.
             </p>
           </div>
-          <WeatherSearch isLoading={isLoading} onSearch={(city) => void search(city)} />
+          <WeatherSearch isLoading={isLoading} onSearch={handleSearch} />
         </header>
+
+        <RecentSearches items={recent} onClear={clearRecent} onSelect={handleSearch} />
 
         {error && (
           <p
