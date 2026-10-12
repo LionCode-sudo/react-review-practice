@@ -21,6 +21,7 @@ export function RecentSearches({ items, onSelect, onClear }: RecentSearchesProps
         </button>
       ))}
       <button
+        aria-label="Clear recent searches"
         className="ml-1 text-xs text-slate-500 underline underline-offset-4 hover:text-slate-300"
         onClick={onClear}
         type="button"

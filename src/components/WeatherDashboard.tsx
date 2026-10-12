@@ -12,9 +12,12 @@ export function WeatherDashboard() {
   const { recent, addRecent, clearRecent } = useRecentSearches()
   const [unit, setUnit] = useState<TemperatureUnit>('celsius')
 
-  function handleSearch(city: string) {
-    void search(city)
-    addRecent(city)
+  async function handleSearch(city: string) {
+    const result = await search(city)
+
+    if (result) {
+      addRecent(result.location.name)
+    }
   }
 
   return (
@@ -46,10 +49,14 @@ export function WeatherDashboard() {
               Clear, local forecasts for wherever you’re headed.
             </p>
           </div>
-          <WeatherSearch isLoading={isLoading} onSearch={handleSearch} />
+          <WeatherSearch isLoading={isLoading} onSearch={(city) => void handleSearch(city)} />
         </header>
 
-        <RecentSearches items={recent} onClear={clearRecent} onSelect={handleSearch} />
+        <RecentSearches
+          items={recent}
+          onClear={clearRecent}
+          onSelect={(city) => void handleSearch(city)}
+        />
 
         {error && (
           <p
