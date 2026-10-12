@@ -1,5 +1,7 @@
+import { WeatherDashboard } from './components/WeatherDashboard'
+
 function App() {
-  return <></>
+  return <WeatherDashboard />
 }
 
 export default App
