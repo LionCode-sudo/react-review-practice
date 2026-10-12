@@ -93,12 +93,12 @@ export function useWeather() {
   const [error, setError] = useState<string | null>(null)
   const activeRequest = useRef<AbortController | null>(null)
 
-  const search = useCallback(async (searchTerm: string) => {
+  const search = useCallback(async (searchTerm: string): Promise<WeatherData | null> => {
     const query = searchTerm.trim()
 
     if (!query) {
       setError('Enter a city name to see its forecast.')
-      return
+      return null
     }
 
     activeRequest.current?.abort()
@@ -110,10 +110,14 @@ export function useWeather() {
     setIsLoading(true)
 
     try {
-      setWeather(await requestWeather(query, controller.signal))
+      const result = await requestWeather(query, controller.signal)
+      setWeather(result)
+      return result
     } catch (requestError) {
-      if (controller.signal.aborted) return
-      setError(getErrorMessage(requestError))
+      if (!controller.signal.aborted) {
+        setError(getErrorMessage(requestError))
+      }
+      return null
     } finally {
       if (!controller.signal.aborted) {
         setIsLoading(false)
