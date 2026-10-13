@@ -5,10 +5,11 @@ import type { TemperatureUnit } from '../types/weather'
 import { CurrentWeather } from './CurrentWeather'
 import { ForecastList } from './ForecastList'
 import { RecentSearches } from './RecentSearches'
+import { UseMyLocation } from './UseMyLocation'
 import { WeatherSearch } from './WeatherSearch'
 
 export function WeatherDashboard() {
-  const { weather, isLoading, error, search } = useWeather()
+  const { weather, isLoading, error, search, searchByCurrentLocation } = useWeather()
   const { recent, addRecent, clearRecent } = useRecentSearches()
   const [unit, setUnit] = useState<TemperatureUnit>('celsius')
 
@@ -51,6 +52,10 @@ export function WeatherDashboard() {
           </div>
           <WeatherSearch isLoading={isLoading} onSearch={(city) => void handleSearch(city)} />
         </header>
+
+        <div className="mb-4">
+          <UseMyLocation isLoading={isLoading} onLocate={() => void searchByCurrentLocation()} />
+        </div>
 
         <RecentSearches
           items={recent}
