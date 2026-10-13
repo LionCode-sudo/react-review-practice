@@ -1,16 +1,16 @@
-import { useState, type FormEvent } from 'react'
+import type { FormEvent } from 'react'
 
 type WeatherSearchProps = {
   isLoading: boolean
+  value: string
+  onValueChange: (value: string) => void
   onSearch: (city: string) => void
 }
 
-export function WeatherSearch({ isLoading, onSearch }: WeatherSearchProps) {
-  const [city, setCity] = useState('')
-
+export function WeatherSearch({ isLoading, value, onValueChange, onSearch }: WeatherSearchProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    onSearch(city)
+    onSearch(value)
   }
 
   return (
@@ -34,10 +34,10 @@ export function WeatherSearch({ isLoading, onSearch }: WeatherSearchProps) {
           autoComplete="off"
           className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-400"
           id="city-search"
-          onChange={(event) => setCity(event.target.value)}
+          onChange={(event) => onValueChange(event.target.value)}
           placeholder="Search any city…"
           type="search"
-          value={city}
+          value={value}
         />
       </div>
       <button

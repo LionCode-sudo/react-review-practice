@@ -12,6 +12,12 @@ export function WeatherDashboard() {
   const { weather, isLoading, error, search, searchByCurrentLocation } = useWeather()
   const { recent, addRecent, clearRecent } = useRecentSearches()
   const [unit, setUnit] = useState<TemperatureUnit>('celsius')
+  const [searchText, setSearchText] = useState('')
+
+  function handleSelectRecent(city: string) {
+    setSearchText(city)
+    void handleSearch(city)
+  }
 
   async function handleSearch(city: string) {
     const result = await search(city)
@@ -50,18 +56,19 @@ export function WeatherDashboard() {
               Clear, local forecasts for wherever you’re headed.
             </p>
           </div>
-          <WeatherSearch isLoading={isLoading} onSearch={(city) => void handleSearch(city)} />
+          <WeatherSearch
+            isLoading={isLoading}
+            onSearch={(city) => void handleSearch(city)}
+            onValueChange={setSearchText}
+            value={searchText}
+          />
         </header>
 
         <div className="mb-4">
           <UseMyLocation isLoading={isLoading} onLocate={() => void searchByCurrentLocation()} />
         </div>
 
-        <RecentSearches
-          items={recent}
-          onClear={clearRecent}
-          onSelect={(city) => void handleSearch(city)}
-        />
+        <RecentSearches items={recent} onClear={clearRecent} onSelect={handleSelectRecent} />
 
         {error && (
           <p

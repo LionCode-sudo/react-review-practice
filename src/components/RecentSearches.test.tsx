@@ -150,4 +150,42 @@ describe('recent searches', () => {
     expect(await screen.findByRole('heading', { name: 'Tokyo' })).toBeInTheDocument()
     expect(recentChips()).toEqual(['Tokyo'])
   })
+
+  it('fills the search box when a recent search is clicked', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Colombo' })
+
+    await searchFor(user, 'Tokyo')
+    await screen.findByRole('heading', { name: 'Tokyo' })
+    await searchFor(user, 'Paris')
+    await screen.findByRole('heading', { name: 'Paris' })
+
+    const searchBox = screen.getByRole('searchbox', { name: 'Search for a city' })
+    expect(searchBox).toHaveValue('Paris')
+
+    const recent = screen.getByRole('navigation', { name: 'Recent searches' })
+    await user.click(within(recent).getByRole('button', { name: 'Tokyo' }))
+
+    expect(searchBox).toHaveValue('Tokyo')
+    expect(await screen.findByRole('heading', { name: 'Tokyo' })).toBeInTheDocument()
+  })
+
+  it('lets the user keep editing the search box after picking a recent search', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Colombo' })
+
+    await searchFor(user, 'Tokyo')
+    await screen.findByRole('heading', { name: 'Tokyo' })
+
+    const recent = screen.getByRole('navigation', { name: 'Recent searches' })
+    await user.click(within(recent).getByRole('button', { name: 'Tokyo' }))
+    await screen.findByRole('heading', { name: 'Tokyo' })
+
+    await searchFor(user, 'Oslo')
+
+    expect(await screen.findByRole('heading', { name: 'Oslo' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Search for a city' })).toHaveValue('Oslo')
+  })
 })
