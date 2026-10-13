@@ -94,59 +94,70 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong while loading the forecast.'
 }
 
+const LOCATION_ERRORS: Record<number, string> = {
+  1: 'Location access was denied. Allow it in your browser settings, or search for a city.',
+  2: 'Your location is unavailable right now. Try again, or search for a city.',
+  3: 'Finding your location took too long. Try again, or search for a city.',
+}
+
+const LOCATION_UNSUPPORTED =
+  "Your browser can't share your location here. Search for a city instead."
+
+type Coordinates = { latitude: number; longitude: number }
+
+function getCurrentCoordinates(signal: AbortSignal): Promise<Coordinates> {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      reject(new Error(LOCATION_UNSUPPORTED))
+      return
+    }
+
+    // The browser can't cancel a position lookup, so stop waiting for it instead.
+    const handleAbort = () => reject(new DOMException('Location request aborted', 'AbortError'))
+    signal.addEventListener('abort', handleAbort, { once: true })
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        signal.removeEventListener('abort', handleAbort)
+        resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude })
+      },
+      (positionError) => {
+        signal.removeEventListener('abort', handleAbort)
+        reject(new Error(LOCATION_ERRORS[positionError.code] ?? LOCATION_UNSUPPORTED))
+      },
+      { timeout: 10_000, maximumAge: 60_000 },
+    )
+  })
+}
+
 export function useWeather() {
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const activeRequest = useRef<AbortController | null>(null)
 
-  const search = useCallback(async (searchTerm: string): Promise<WeatherData | null> => {
-    const query = searchTerm.trim()
-
-    if (!query) {
-      setError('Enter a city name to see its forecast.')
-      return null
-    }
-
-    activeRequest.current?.abort()
-    const controller = new AbortController()
-    activeRequest.current = controller
-
-    setWeather(null)
-    setError(null)
-    setIsLoading(true)
-
-    try {
-      const result = await requestWeather(query, controller.signal)
-      setWeather(result)
-      return result
-    } catch (requestError) {
-      if (!controller.signal.aborted) {
-        setError(getErrorMessage(requestError))
-      }
-      return null
-    } finally {
-      if (!controller.signal.aborted) {
-        setIsLoading(false)
-      }
-    }
-  }, [])
-
-  const searchByCoordinates = useCallback(
-    async (latitude: number, longitude: number): Promise<WeatherData | null> => {
+  // Shared by every kind of lookup: cancels the previous request, tracks
+  // loading and error state, and ignores results that were superseded.
+  const runRequest = useCallback(
+    async (
+      load: (signal: AbortSignal) => Promise<WeatherData>,
+      { keepWeather = false }: { keepWeather?: boolean } = {},
+    ): Promise<WeatherData | null> => {
       activeRequest.current?.abort()
       const controller = new AbortController()
       activeRequest.current = controller
 
-      setWeather(null)
+      if (!keepWeather) {
+        setWeather(null)
+      }
       setError(null)
       setIsLoading(true)
 
       try {
-        const result = await requestForecast(
-          { name: 'Your location', latitude, longitude },
-          controller.signal,
-        )
+        const result = await load(controller.signal)
+
+        if (controller.signal.aborted) return null
+
         setWeather(result)
         return result
       } catch (requestError) {
@@ -161,6 +172,34 @@ export function useWeather() {
       }
     },
     [],
+  )
+
+  const search = useCallback(
+    async (searchTerm: string): Promise<WeatherData | null> => {
+      const query = searchTerm.trim()
+
+      if (!query) {
+        setError('Enter a city name to see its forecast.')
+        return null
+      }
+
+      return runRequest((signal) => requestWeather(query, signal))
+    },
+    [runRequest],
+  )
+
+  // Keeps the current forecast on screen while the browser asks for permission,
+  // so a denied or failed lookup doesn't leave the page empty.
+  const searchByCurrentLocation = useCallback(
+    () =>
+      runRequest(
+        async (signal) => {
+          const { latitude, longitude } = await getCurrentCoordinates(signal)
+          return requestForecast({ name: 'Your location', latitude, longitude }, signal)
+        },
+        { keepWeather: true },
+      ),
+    [runRequest],
   )
 
   useEffect(() => {
@@ -185,5 +224,5 @@ export function useWeather() {
     return () => activeRequest.current?.abort()
   }, [])
 
-  return { weather, isLoading, error, search, searchByCoordinates }
+  return { weather, isLoading, error, search, searchByCurrentLocation }
 }

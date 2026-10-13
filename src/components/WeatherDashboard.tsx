@@ -9,15 +9,9 @@ import { UseMyLocation } from './UseMyLocation'
 import { WeatherSearch } from './WeatherSearch'
 
 export function WeatherDashboard() {
-  const { weather, isLoading, error, search, searchByCoordinates } = useWeather()
+  const { weather, isLoading, error, search, searchByCurrentLocation } = useWeather()
   const { recent, addRecent, clearRecent } = useRecentSearches()
   const [unit, setUnit] = useState<TemperatureUnit>('celsius')
-
-  function handleUseLocation() {
-    navigator.geolocation.getCurrentPosition((position) => {
-      void searchByCoordinates(position.coords.latitude, position.coords.longitude)
-    })
-  }
 
   async function handleSearch(city: string) {
     const result = await search(city)
@@ -60,7 +54,7 @@ export function WeatherDashboard() {
         </header>
 
         <div className="mb-4">
-          <UseMyLocation onLocate={handleUseLocation} />
+          <UseMyLocation isLoading={isLoading} onLocate={() => void searchByCurrentLocation()} />
         </div>
 
         <RecentSearches

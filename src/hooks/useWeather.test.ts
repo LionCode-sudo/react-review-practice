@@ -96,4 +96,125 @@ describe('useWeather', () => {
     expect(result.current.error).toBeNull()
     expect(result.current.isLoading).toBe(false)
   })
+
+  describe('searchByCurrentLocation', () => {
+    type Pending = { success?: PositionCallback; error?: PositionErrorCallback }
+
+    function stubGeolocation() {
+      const pending: Pending = {}
+
+      vi.stubGlobal('navigator', {
+        geolocation: {
+          getCurrentPosition: (success: PositionCallback, error?: PositionErrorCallback | null) => {
+            pending.success = success
+            pending.error = error ?? undefined
+          },
+        },
+      })
+
+      return pending
+    }
+
+    const position = { coords: { latitude: 7.2906, longitude: 80.6337 } } as GeolocationPosition
+    const positionError = (code: number) => ({ code, message: '' }) as GeolocationPositionError
+
+    const forecastRequests = () =>
+      fetchMock.mock.calls
+        .map(([input]) => new URL(String(input)))
+        .filter((url) => url.hostname === 'api.open-meteo.com')
+
+    beforeEach(() => {
+      fetchMock.mockImplementation((input) => {
+        const url = new URL(String(input))
+
+        if (url.hostname === 'geocoding-api.open-meteo.com') {
+          return Promise.resolve(
+            jsonResponse({ results: [makeLocation(url.searchParams.get('name') ?? 'Colombo')] }),
+          )
+        }
+
+        return Promise.resolve(jsonResponse(makeForecast()))
+      })
+    })
+
+    async function renderLoaded() {
+      const view = renderHook(() => useWeather())
+      await waitFor(() => expect(view.result.current.weather?.location.name).toBe('Colombo'))
+      return view
+    }
+
+    it.each([
+      [1, 'denied'],
+      [2, 'unavailable'],
+      [3, 'took too long'],
+    ])('reports geolocation error code %i and keeps the previous forecast', async (code, text) => {
+      const pending = stubGeolocation()
+      const { result } = await renderLoaded()
+
+      let outcome: unknown
+      await act(async () => {
+        const request = result.current.searchByCurrentLocation()
+        pending.error?.(positionError(code))
+        outcome = await request
+      })
+
+      expect(outcome).toBeNull()
+      expect(result.current.error).toContain(text)
+      expect(result.current.weather?.location.name).toBe('Colombo')
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    it('reports an unsupported browser instead of throwing', async () => {
+      vi.stubGlobal('navigator', {})
+      const { result } = await renderLoaded()
+
+      await act(async () => {
+        await result.current.searchByCurrentLocation()
+      })
+
+      expect(result.current.error).toContain("can't share your location")
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    it('reports a forecast failure after the position is found', async () => {
+      const pending = stubGeolocation()
+      const { result } = await renderLoaded()
+
+      fetchMock.mockResolvedValueOnce(jsonResponse({}, 500))
+
+      await act(async () => {
+        const request = result.current.searchByCurrentLocation()
+        pending.success?.(position)
+        await request
+      })
+
+      expect(result.current.error).toBe('The weather service is unavailable. Please try again.')
+      expect(result.current.weather?.location.name).toBe('Colombo')
+    })
+
+    it('ignores a late position after a newer city search', async () => {
+      const pending = stubGeolocation()
+      const { result } = await renderLoaded()
+
+      let locationRequest!: Promise<unknown>
+      act(() => {
+        locationRequest = result.current.searchByCurrentLocation()
+      })
+
+      await act(async () => {
+        await result.current.search('Tokyo')
+      })
+
+      await act(async () => {
+        pending.success?.(position)
+        await locationRequest
+      })
+
+      expect(result.current.weather?.location.name).toBe('Tokyo')
+      expect(result.current.error).toBeNull()
+      expect(forecastRequests().some((url) => url.searchParams.get('latitude') === '7.2906')).toBe(
+        false,
+      )
+    })
+  })
 })
