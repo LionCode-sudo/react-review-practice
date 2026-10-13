@@ -49,6 +49,13 @@ async function requestWeather(query: string, signal: AbortSignal): Promise<Weath
     throw new Error(`We couldn't find "${query}". Try a nearby city.`)
   }
 
+  return requestForecast(location, signal)
+}
+
+async function requestForecast(
+  location: WeatherLocation,
+  signal: AbortSignal,
+): Promise<WeatherData> {
   const forecastUrl = new URL('https://api.open-meteo.com/v1/forecast')
   forecastUrl.search = new URLSearchParams({
     latitude: String(location.latitude),
@@ -125,6 +132,37 @@ export function useWeather() {
     }
   }, [])
 
+  const searchByCoordinates = useCallback(
+    async (latitude: number, longitude: number): Promise<WeatherData | null> => {
+      activeRequest.current?.abort()
+      const controller = new AbortController()
+      activeRequest.current = controller
+
+      setWeather(null)
+      setError(null)
+      setIsLoading(true)
+
+      try {
+        const result = await requestForecast(
+          { name: 'Your location', latitude, longitude },
+          controller.signal,
+        )
+        setWeather(result)
+        return result
+      } catch (requestError) {
+        if (!controller.signal.aborted) {
+          setError(getErrorMessage(requestError))
+        }
+        return null
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false)
+        }
+      }
+    },
+    [],
+  )
+
   useEffect(() => {
     const controller = new AbortController()
     activeRequest.current = controller
@@ -147,5 +185,5 @@ export function useWeather() {
     return () => activeRequest.current?.abort()
   }, [])
 
-  return { weather, isLoading, error, search }
+  return { weather, isLoading, error, search, searchByCoordinates }
 }
