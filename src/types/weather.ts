@@ -29,10 +29,18 @@ export type ForecastDay = {
   precipitationChance: number
 }
 
+export type HourlyPoint = {
+  time: string
+  weatherCode: number
+  temperature: number
+  precipitationChance: number
+}
+
 export type WeatherData = {
   location: WeatherLocation
   current: CurrentConditions
   forecast: ForecastDay[]
+  hourly: HourlyPoint[]
 }
 
 export type WeatherPresentation = {

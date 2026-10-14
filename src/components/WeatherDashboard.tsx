@@ -4,6 +4,7 @@ import { useWeather } from '../hooks/useWeather'
 import type { TemperatureUnit } from '../types/weather'
 import { CurrentWeather } from './CurrentWeather'
 import { ForecastList } from './ForecastList'
+import { HourlyForecast } from './HourlyForecast'
 import { RecentSearches } from './RecentSearches'
 import { UseMyLocation } from './UseMyLocation'
 import { WeatherSearch } from './WeatherSearch'
@@ -83,6 +84,7 @@ export function WeatherDashboard() {
         {weather && (
           <>
             <CurrentWeather onUnitChange={setUnit} unit={unit} weather={weather} />
+            <HourlyForecast hourly={weather.hourly} unit={unit} />
             <ForecastList forecast={weather.forecast} unit={unit} />
           </>
         )}
