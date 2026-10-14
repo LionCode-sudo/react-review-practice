@@ -24,3 +24,7 @@ export function formatTemperature(value: number, unit: TemperatureUnit): string 
 export function formatForecastDay(date: string): string {
   return new Intl.DateTimeFormat('en', { weekday: 'short' }).format(new Date(`${date}T12:00:00`))
 }
+
+export function formatHour(time: string): string {
+  return new Intl.DateTimeFormat('en', { hour: 'numeric' }).format(new Date(time))
+}

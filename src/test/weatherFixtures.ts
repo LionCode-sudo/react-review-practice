@@ -9,8 +9,30 @@ export function makeLocation(name = 'Colombo') {
   }
 }
 
+function toLocalIso(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:00`
+}
+
+function makeHourly() {
+  const start = new Date()
+  start.setMinutes(0, 0, 0)
+  const hours = Array.from(
+    { length: 48 },
+    (_, index) => new Date(start.getTime() + index * 3_600_000),
+  )
+
+  return {
+    time: hours.map(toLocalIso),
+    temperature_2m: hours.map((_, index) => 22 + (index % 6)),
+    weather_code: hours.map((_, index) => [1, 2, 3, 61][index % 4]),
+    precipitation_probability: hours.map((_, index) => (index * 5) % 60),
+  }
+}
+
 export function makeForecast() {
   return {
+    hourly: makeHourly(),
     current: {
       temperature_2m: 24.6,
       relative_humidity_2m: 68,

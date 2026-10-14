@@ -14,6 +14,12 @@ type ForecastResponse = {
     weather_code: number
     wind_speed_10m: number
   }
+  hourly: {
+    time: string[]
+    temperature_2m: number[]
+    weather_code: number[]
+    precipitation_probability: number[]
+  }
   daily: {
     time: string[]
     weather_code: number[]
@@ -63,6 +69,7 @@ async function requestForecast(
     current:
       'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m',
     daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+    hourly: 'temperature_2m,weather_code,precipitation_probability',
     forecast_days: '5',
     timezone: 'auto',
   }).toString()
@@ -76,6 +83,17 @@ async function requestForecast(
     precipitationChance: forecast.daily.precipitation_probability_max[index] ?? 0,
   }))
 
+  const now = new Date()
+  const hourly = forecast.hourly.time
+    .map((time, index) => ({
+      time,
+      weatherCode: forecast.hourly.weather_code[index] ?? 3,
+      temperature: forecast.hourly.temperature_2m[index] ?? 0,
+      precipitationChance: forecast.hourly.precipitation_probability[index] ?? 0,
+    }))
+    .filter((hour) => new Date(hour.time) >= now)
+    .slice(0, 24)
+
   return {
     location,
     current: {
@@ -87,6 +105,7 @@ async function requestForecast(
       isDay: forecast.current.is_day === 1,
     },
     forecast: forecastDays,
+    hourly,
   }
 }
 
